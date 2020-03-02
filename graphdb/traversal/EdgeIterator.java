@@ -3,22 +3,28 @@ package grakn.rocksdbtest.graphdb.traversal;
 import grakn.rocksdbtest.graphdb.KeySerDes;
 import org.rocksdb.RocksIterator;
 
-public abstract class EdgeIterator implements TraversalIterator {
+public class EdgeIterator implements TraversalIterator {
     private final RocksIterator iter;
     private final byte[] target;
 
-    public EdgeIterator(RocksIterator iter, byte[] target) {
+    public EdgeIterator(RocksIterator iter, long nodeId, byte label) {
         this.iter = iter;
-        this.target = target;
+        this.target = KeySerDes.serialize(nodeId, label);
     }
 
     private boolean valid() {
-        return iter.isValid() && KeySerDes.prefixed(iter.key(), target) && check(iter.key());
+        return iter.isValid() && KeySerDes.hasOther(iter.key()) && KeySerDes.prefixed(iter.key(), target);
     }
 
     @Override
     public boolean seek() {
         iter.seek(target);
+        return valid();
+    }
+
+    @Override
+    public boolean scan(long otherId) {
+        iter.seek(KeySerDes.serialize(KeySerDes.getNode(target), KeySerDes.getEdge(target), otherId));
         return valid();
     }
 
@@ -30,12 +36,8 @@ public abstract class EdgeIterator implements TraversalIterator {
 
     @Override
     public long get() {
-        return get(iter.key());
+        return KeySerDes.getOther(iter.key());
     }
-
-    protected abstract long get(byte[] key);
-
-    protected abstract boolean check(byte[] key);
 
     @Override
     public void close() {

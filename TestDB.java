@@ -49,40 +49,27 @@ public class TestDB {
             try (final RocksDB db = RocksDB.open(options, dbPath)) {
 
                 try (final GraphDB graphDB = new GraphDB(db)) {
-                    graphDB.insertEdge(1, EdgeLabel.HAS.out(), 2);
-                    graphDB.insertEdge(1, EdgeLabel.HAS.out(), 3);
-                    graphDB.insertEdge(1, EdgeLabel.HAS.out(), 4);
-                    graphDB.insertEdge(1, EdgeLabel.HASA.out(), 2, 5);
-                    graphDB.insertEdge(1, EdgeLabel.HASA.out(), 2, 6);
-                    graphDB.insertEdge(1, EdgeLabel.HASA.out(), 3, 6);
-                    graphDB.insertEdge(1, EdgeLabel.HASA.out(), 2, 7);
+                    graphDB.insertEdge(2, EdgeLabel.ISA.out(), 1);
+                    graphDB.insertEdge(3, EdgeLabel.ISA.out(), 1);
+                    graphDB.insertEdge(4, EdgeLabel.ISA.out(), 1);
 
-                    try (TraversalIterator iterator = graphDB.edges(1, EdgeLabel.HAS.out())) {
-                        if (iterator.seek()) do {
-                            System.out.println(iterator.get());
-                        } while (iterator.next());
-                    }
-                    try (TraversalIterator iterator = graphDB.edges(2, EdgeLabel.HAS.out())) {
-                        if (iterator.seek()) do {
-                            System.out.println(iterator.get());
-                        } while (iterator.next());
-                    }
-                    try (TraversalIterator iterator = graphDB.edges(3, EdgeLabel.HAS.in())) {
-                        if (iterator.seek()) do {
-                            System.out.println(iterator.get());
-                        } while (iterator.next());
-                    }
+                    graphDB.insertEdge( 6, EdgeLabel.ISA.out(), 5);
+                    graphDB.insertEdge( 7, EdgeLabel.ISA.out(), 5);
+                    graphDB.insertEdge( 8, EdgeLabel.ISA.out(), 5);
 
-                    System.out.println("1 hasa out via 2:");
-                    try (TraversalIterator iterator = graphDB.edges(1, EdgeLabel.HASA.out(), 2)) {
-                        if (iterator.seek()) do {
-                            System.out.println(iterator.get());
-                        } while (iterator.next());
-                    }
+                    graphDB.insertEdge( 3, EdgeLabel.HAS.out(), 7);
 
                     try (RocksIterator iter = db.newIterator()) {
                         for (iter.seekToFirst(); iter.isValid(); iter.next()) {
                             System.out.println(bytesToHex(iter.key()));
+                        }
+                    }
+
+                    try (TraversalIterator iter = graphDB.hop(1, EdgeLabel.ISA.in(), EdgeLabel.HAS.out(), 7)) {
+                        if (iter.seek()) {
+                            do {
+                                System.out.println(iter.get());
+                            } while (iter.next());
                         }
                     }
                 }

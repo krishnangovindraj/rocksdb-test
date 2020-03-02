@@ -1,14 +1,12 @@
 package grakn.rocksdbtest.graphdb;
 
-import grakn.rocksdbtest.graphdb.traversal.BinaryEdgeIterator;
-import grakn.rocksdbtest.graphdb.traversal.TernaryEdgeIterator;
+import grakn.rocksdbtest.graphdb.traversal.EdgeIterator;
+import grakn.rocksdbtest.graphdb.traversal.IntersectIterator;
 import grakn.rocksdbtest.graphdb.traversal.TraversalIterator;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
-
-import java.util.Iterator;
 
 public class GraphDB implements AutoCloseable {
     private final RocksDB db;
@@ -24,25 +22,19 @@ public class GraphDB implements AutoCloseable {
     }
 
     public TraversalIterator edges(long start, byte label) {
-        return new BinaryEdgeIterator(db.newIterator(), start, label);
+        return new EdgeIterator(db.newIterator(), start, label);
     }
 
-    public TraversalIterator edges(long start, byte label, long via) {
-        return new TernaryEdgeIterator(db.newIterator(), start, label, via);
+    public TraversalIterator hop(long start, byte firstLabel, byte secondLabel, long end) {
+        return new IntersectIterator(
+                new EdgeIterator(db.newIterator(), start, firstLabel),
+                new EdgeIterator(db.newIterator(), end, (byte) (secondLabel ^ 0x80))
+        );
     }
 
-    public void insertEdge(long start, byte label, long via) throws RocksDBException {
-        System.out.println(KeySerDes.serialize(start, label, via).length);
-        System.out.println(bytesToHex(KeySerDes.serialize(start, label, via)));
-
-        db.put(KeySerDes.serialize(start, label, via), EMPTY);
-        db.put(KeySerDes.serialize(start, (byte) (label ^ 0x80), via), EMPTY);
-
-        System.out.println(bytesToHex(db.get(KeySerDes.serialize(start, label, via))));
-    }
-
-    public void insertEdge(long start, byte label, long via, long other) throws RocksDBException {
-        db.put(KeySerDes.serialize(start, label, via, other), EMPTY);
+    public void insertEdge(long start, byte label, long other) throws RocksDBException {
+        db.put(KeySerDes.serialize(start, label, other), EMPTY);
+        db.put(KeySerDes.serialize(other, (byte) (label ^ 0x80), start), EMPTY);
     }
 
     @Override
