@@ -1,9 +1,8 @@
 java_binary(
     name = "testdb",
-    srcs = glob(["*.java"]),
-    main_class = "paralleliteratortest.TestDB",
+    srcs = glob(["paralleltest/TestDB.java"]),
+    main_class = "rocksdbtest.paralleltest.TestDB",
     deps = [
-        "//graphdb",
         "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni",
     ],
 )
