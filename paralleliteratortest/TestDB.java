@@ -1,4 +1,4 @@
-package grakn.rocksdbtest;
+package paralleliteratortest;
 
 import grakn.rocksdbtest.graphdb.EdgeLabel;
 import grakn.rocksdbtest.graphdb.GraphDB;
@@ -48,31 +48,6 @@ public class TestDB {
 
             try (final RocksDB db = RocksDB.open(options, dbPath)) {
 
-                try (final GraphDB graphDB = new GraphDB(db)) {
-                    graphDB.insertEdge(2, EdgeLabel.ISA.out(), 1);
-                    graphDB.insertEdge(3, EdgeLabel.ISA.out(), 1);
-                    graphDB.insertEdge(4, EdgeLabel.ISA.out(), 1);
-
-                    graphDB.insertEdge( 6, EdgeLabel.ISA.out(), 5);
-                    graphDB.insertEdge( 7, EdgeLabel.ISA.out(), 5);
-                    graphDB.insertEdge( 8, EdgeLabel.ISA.out(), 5);
-
-                    graphDB.insertEdge( 3, EdgeLabel.HAS.out(), 7);
-
-                    try (RocksIterator iter = db.newIterator()) {
-                        for (iter.seekToFirst(); iter.isValid(); iter.next()) {
-                            System.out.println(bytesToHex(iter.key()));
-                        }
-                    }
-
-                    try (TraversalIterator iter = graphDB.hop(1, EdgeLabel.ISA.in(), EdgeLabel.HAS.out(), 7)) {
-                        if (iter.seek()) {
-                            do {
-                                System.out.println(iter.get());
-                            } while (iter.next());
-                        }
-                    }
-                }
             } catch (RocksDBException e) {
                 e.printStackTrace();
                 System.exit(1);
