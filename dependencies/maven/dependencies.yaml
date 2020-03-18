@@ -27,6 +27,14 @@ dependencies:
       version: "6.6.4"
       lang: java
 
+  org.openjdk.jmh:
+    jmh-core:
+      version: "1.23"
+      lang: java
+    jmh-generator-annprocess:
+      version: "1.23"
+      lang: java
+
   # com.google.protobuf:
   #   protobuf-java:
   #     version: "3.5.1"
