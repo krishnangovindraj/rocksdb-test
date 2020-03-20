@@ -1,27 +1,34 @@
 package rocksdbtest.microbenchmarks;
 
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Mode;
 
 import java.nio.ByteBuffer;
 
 public class ByteBufferBenchmarks {
 
+    static final int DATA = 1234567;
+
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.Throughput)
     @Benchmark
-    public void buffer() {
-        int data = 1234567;
+    public byte[] buffer() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
-        byteBuffer.putInt(data);
-        byte[] arr = byteBuffer.array();
+        byteBuffer.putInt(DATA);
+        return byteBuffer.array();
     }
 
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.Throughput)
     @Benchmark
-    public void toBytes() {
-        int data = 1234567;
-        byte[] arr = new byte[] {
-                (byte)(data >> 24),
-                (byte)(data >> 16),
-                (byte)(data >> 8),
-                (byte) data,
+    public byte[] toBytes() {
+        return new byte[] {
+                (byte)(DATA >> 24),
+                (byte)(DATA >> 16),
+                (byte)(DATA >> 8),
+                (byte) DATA,
         };
     }
 

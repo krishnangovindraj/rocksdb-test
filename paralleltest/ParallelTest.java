@@ -7,7 +7,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class TestDB {
+public class ParallelTest {
 
     private static final byte[] EMPTY = new byte[]{};
     private static final int CHUNKS = 1000;
@@ -79,7 +79,7 @@ public class TestDB {
                         .mapToObj(i -> new I(tx.getIterator(readOptions), i))
                         .collect(Collectors.toList());
 
-                bench("iterating values striped", () -> iList.parallelStream().forEach(TestDB::iterate));
+                bench("iterating values striped", () -> iList.parallelStream().forEach(ParallelTest::iterate));
             }
 
             {
@@ -88,7 +88,7 @@ public class TestDB {
                         .mapToObj(i -> new I(tx.getIterator(readOptions), random.nextInt(CHUNKS)))
                         .collect(Collectors.toList());
 
-                bench("iterating values random chunks", () -> iList.parallelStream().forEach(TestDB::iterate));
+                bench("iterating values random chunks", () -> iList.parallelStream().forEach(ParallelTest::iterate));
             }
 
             {
@@ -98,7 +98,7 @@ public class TestDB {
                         .mapToObj(i -> new I(tx.getIterator(readOptions), chunk))
                         .collect(Collectors.toList());
 
-                bench("everyone iterating one chunk", () -> iList.parallelStream().forEach(TestDB::iterate));
+                bench("everyone iterating one chunk", () -> iList.parallelStream().forEach(ParallelTest::iterate));
             }
 
             tx.commit();
