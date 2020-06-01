@@ -1,5 +1,6 @@
 package rocksdbtest.snapshot;
 
+import org.junit.Assert;
 import org.rocksdb.OptimisticTransactionDB;
 import org.rocksdb.OptimisticTransactionOptions;
 import org.rocksdb.Options;
@@ -11,6 +12,7 @@ import org.rocksdb.WriteOptions;
 import java.util.Arrays;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertArrayEquals;
 
 public class TestSnapshotIsolation {
 
@@ -122,18 +124,19 @@ public class TestSnapshotIsolation {
 
     private static void testConcurrentPutUntrackedDeleteTrackedThrows(OptimisticTransactionDB db) throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
-        final WriteOptions writeOptions1 = new WriteOptions();
+        final ReadOptions readOptions = new ReadOptions();
+        final WriteOptions writeOptions = new WriteOptions();
         final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
 
-        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx1 = db.beginTransaction(writeOptions, txOptions);
 
         System.out.println(tx1 + ", snapshot version: " + tx1.getSnapshot().getSequenceNumber());
 
         tx1.put(key, value);
         tx1.commit();
 
-        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
-        Transaction tx3 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx2 = db.beginTransaction(writeOptions, txOptions);
+        Transaction tx3 = db.beginTransaction(writeOptions, txOptions);
 
         tx2.putUntracked(key, value);
         tx3.delete(key);
@@ -146,9 +149,10 @@ public class TestSnapshotIsolation {
         }
 
         // try other order
-        Transaction tx4 = db.beginTransaction(writeOptions1, txOptions);
-        Transaction tx5 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx4 = db.beginTransaction(writeOptions, txOptions);
+        Transaction tx5 = db.beginTransaction(writeOptions, txOptions);
 
+        assertArrayEquals(value, tx4.get(readOptions, key));
         tx4.putUntracked(key, value);
         tx5.delete(key);
         tx5.commit();
@@ -199,7 +203,7 @@ public class TestSnapshotIsolation {
             System.out.println("==> exclusive getForUpdate THROWS, SUCCESS");
             return;
         }
-        System.out.println("FAIL");
+        System.out.println("SUCCESS");
     }
 
     public static void main(String[] args) {

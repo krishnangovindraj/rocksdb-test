@@ -4,5 +4,6 @@ java_binary(
     main_class = "rocksdbtest.snapshot.TestSnapshotIsolation",
     deps = [
         "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni",
+        "//dependencies/maven/artifacts/junit:junit",
     ],
 )
