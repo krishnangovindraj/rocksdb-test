@@ -27,6 +27,7 @@ public class TestSnapshotIsolation {
         testConcurrentPutUntrackedDoesNotThrow(db);
         testConcurrentPutUntrackedDeleteTrackedThrows(db);
         testConcurrentGetForUpdate(db);
+        testConcurrentGetForUpdateAndDeleteTrackedThrows(db);
     }
 
     private static void testConcurrentPutThrows(OptimisticTransactionDB db) throws RocksDBException {
@@ -203,6 +204,52 @@ public class TestSnapshotIsolation {
             System.out.println("==> exclusive getForUpdate THROWS, SUCCESS");
             return;
         }
+        System.out.println("SUCCESS");
+    }
+
+    private static void testConcurrentGetForUpdateAndDeleteTrackedThrows(OptimisticTransactionDB db) throws RocksDBException {
+        System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
+        final ReadOptions readOptions = new ReadOptions();
+        final WriteOptions writeOptions1 = new WriteOptions();
+        final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
+
+        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
+
+        System.out.println(tx1 + ", snapshot version: " + tx1.getSnapshot().getSequenceNumber());
+
+        tx1.put(key, value);
+        tx1.commit();
+
+        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx3 = db.beginTransaction(writeOptions1, txOptions);
+
+        tx2.getForUpdate(readOptions, key, false);
+        tx3.delete(key);
+        tx2.commit();
+        try {
+            tx3.commit();
+        } catch (Exception e) {
+            System.out.println("==> delete that is preceded by getForUpdate THROWS, SUCCESS");
+            return;
+        }
+
+        Transaction tx4 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx5 = db.beginTransaction(writeOptions1, txOptions);
+
+        tx4.delete(key);
+        tx5.getForUpdate(readOptions, key, false);
+        tx4.commit();
+        try {
+            tx5.commit();
+        } catch (Exception ignored) {
+            System.out.println("===> it turns out doing a getForUpdate after delete also THROWS");
+        }
+
+        Transaction tx6 = db.beginTransaction(writeOptions1, txOptions);
+        assertArrayEquals(null, tx6.get(readOptions, key));
+
+        System.out.println("==> and we can see that the key is deleted");
+
         System.out.println("SUCCESS");
     }
 
