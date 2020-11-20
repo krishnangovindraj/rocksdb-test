@@ -446,15 +446,15 @@ public class TransactionTest {
             try {
                 tx1 = new RocksTransaction(db);
                 tx2 = new RocksTransaction(db);
-                assertEquals(0, getInt(tx1, 1));
+                assertEquals(0, getInt(tx1, 2));
 
                 tx1.put(toBytes(2), toBytes(20));
-                tx2.put(toBytes(1), toBytes(10));
+                tx2.put(toBytes(2), toBytes(10));
 
                 tx2.commit();
                 tx1.rollback();
 
-                assertEquals(0, getInt(tx1, 1));
+                assertEquals(0, getInt(tx1, 2));
 
                 tx3 = new RocksTransaction(db);
                 tx3.put(toBytes(2), toBytes(30));
