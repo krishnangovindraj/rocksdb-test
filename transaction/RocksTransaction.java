@@ -6,14 +6,16 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.Transaction;
 import org.rocksdb.WriteOptions;
 
-class RocksTransaction implements AutoCloseable {
+import java.nio.ByteBuffer;
+
+public class RocksTransaction implements AutoCloseable {
 
     private final WriteOptions writeOptions;
     private final ReadOptions readOptions;
     private final OptimisticTransactionOptions optimisticTransactionOptions;
     private final Transaction transaction;
 
-    RocksTransaction(RocksDatabase db) {
+    public RocksTransaction(RocksDatabase db) {
         writeOptions = new WriteOptions();
         readOptions = new ReadOptions();
         optimisticTransactionOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
@@ -29,27 +31,53 @@ class RocksTransaction implements AutoCloseable {
         writeOptions.close();
     }
 
-    void put(byte[] key, byte[] value) throws RocksDBException {
+    public void put(byte[] key, byte[] value) throws RocksDBException {
         transaction.put(key, value);
     }
 
-    byte[] get(byte[] key) throws RocksDBException {
+    public byte[] get(byte[] key) throws RocksDBException {
         return transaction.get(readOptions, key);
     }
 
-    byte[] getForUpdate(byte[] key, boolean exclusive) throws RocksDBException {
+    public byte[] getForUpdate(byte[] key, boolean exclusive) throws RocksDBException {
         return transaction.getForUpdate(readOptions, key, exclusive);
     }
 
-    void updateReadSnapshot(RocksDatabase db) {
+    public void delete(byte[] key) throws RocksDBException {
+        transaction.delete(key);
+    }
+
+    public void updateReadSnapshot(RocksDatabase db) {
         readOptions.setSnapshot(db.getSnapshot());
     }
 
-    void commit() throws RocksDBException {
+    public void commit() throws RocksDBException {
         transaction.commit();
     }
 
-    void rollback() throws RocksDBException {
+    public void rollback() throws RocksDBException {
         transaction.rollback();
+    }
+
+    public static byte[] toBytes(final int data) {
+        ByteBuffer buf = ByteBuffer.allocate(4);
+        buf.putInt(data);
+        return buf.array();
+    }
+
+    public static int toInt(byte[] data) {
+        if (data == null || data.length != 4) return -1;
+        ByteBuffer buf = ByteBuffer.wrap(data);
+        return buf.getInt();
+    }
+
+    public static int getInt(RocksTransaction tx, int key) throws RocksDBException {
+        return toInt(tx.get(toBytes(key)));
+    }
+
+    public static int[] getInts(RocksTransaction tx, int... keys) throws RocksDBException {
+        final int[] ints = new int[keys.length];
+        for (int i = 0; i < keys.length; i++) ints[i] = getInt(tx, keys[i]);
+        return ints;
     }
 }
