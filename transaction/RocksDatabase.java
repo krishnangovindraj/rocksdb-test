@@ -1,5 +1,6 @@
 package rocksdbtest.transaction;
 
+import org.rocksdb.Checkpoint;
 import org.rocksdb.OptimisticTransactionDB;
 import org.rocksdb.OptimisticTransactionOptions;
 import org.rocksdb.Options;
@@ -8,12 +9,12 @@ import org.rocksdb.Snapshot;
 import org.rocksdb.Transaction;
 import org.rocksdb.WriteOptions;
 
-class RocksDatabase implements AutoCloseable {
+public class RocksDatabase implements AutoCloseable {
 
     private final Options options;
     private final OptimisticTransactionDB db;
 
-    RocksDatabase(String dbPath) throws RocksDBException {
+    public RocksDatabase(String dbPath) throws RocksDBException {
         options = new Options().setCreateIfMissing(true);
         db = OptimisticTransactionDB.open(options, dbPath);
     }
@@ -24,11 +25,15 @@ class RocksDatabase implements AutoCloseable {
         options.close();
     }
 
-    Transaction beginTransaction(WriteOptions writeOptions, OptimisticTransactionOptions optimisticTransactionOptions) {
+    public Transaction beginTransaction(WriteOptions writeOptions, OptimisticTransactionOptions optimisticTransactionOptions) {
         return db.beginTransaction(writeOptions, optimisticTransactionOptions);
     }
 
-    Snapshot getSnapshot() {
+    public Snapshot getSnapshot() {
         return db.getSnapshot();
+    }
+
+    public Checkpoint createCheckpoint() {
+        return Checkpoint.create(db);
     }
 }
