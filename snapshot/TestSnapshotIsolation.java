@@ -1,6 +1,9 @@
 package rocksdbtest.snapshot;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.rocksdb.OptimisticTransactionDB;
 import org.rocksdb.OptimisticTransactionOptions;
 import org.rocksdb.Options;
@@ -19,18 +22,28 @@ public class TestSnapshotIsolation {
     final static byte[] key = "ghi".getBytes(UTF_8);
     final static byte[] differentKey = "bye".getBytes(UTF_8);
     final static byte[] value = new byte[0];
-//    final static byte[] value = differentKey;
 
-    public static void doTest(OptimisticTransactionDB db) throws RocksDBException {
-        testConcurrentPutThrows(db);
-        testConcurrentDeleteThrows(db);
-        testConcurrentPutUntrackedDoesNotThrow(db);
-        testConcurrentPutUntrackedDeleteTrackedThrows(db);
-        testConcurrentGetForUpdate(db);
-        testConcurrentGetForUpdateAndDeleteTrackedThrows(db);
+    private static Options options;
+    private static OptimisticTransactionDB db;
+
+    @BeforeClass
+    public static void setup() throws RocksDBException {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        String dbPath = tempDir + "rocks_duplicate_key_2";
+        System.out.println("DB path is: " + dbPath);
+        options = new Options();
+        options.setCreateIfMissing(true);
+        db = OptimisticTransactionDB.open(options, dbPath);
     }
 
-    private static void testConcurrentPutThrows(OptimisticTransactionDB db) throws RocksDBException {
+    @AfterClass
+    public static void tearDown() {
+        options.close();
+        db.close();
+    }
+
+    @Test
+    public void testConcurrentPutThrows() throws RocksDBException {
         System.out.println("\n#### Testing that concurrent PUTs throw");
         final WriteOptions writeOptions1 = new WriteOptions();
         final WriteOptions writeOptions2 = new WriteOptions();
@@ -60,7 +73,8 @@ public class TestSnapshotIsolation {
         System.out.println("FAIL");
     }
 
-    private static void testConcurrentDeleteThrows(OptimisticTransactionDB db) throws RocksDBException {
+    @Test
+    public void testConcurrentDeleteThrows() throws RocksDBException {
         System.out.println("\n#### Testing that concurrent DELETEs throw");
         final WriteOptions writeOptions1 = new WriteOptions();
         final WriteOptions writeOptions2 = new WriteOptions();
@@ -92,10 +106,10 @@ public class TestSnapshotIsolation {
             return;
         }
         System.out.println("==> SUCCESS");
-
     }
 
-    private static void testConcurrentPutUntrackedDoesNotThrow(OptimisticTransactionDB db) throws RocksDBException {
+    @Test
+    public void testConcurrentPutUntrackedDoesNotThrow() throws RocksDBException {
         System.out.println("\n#### Testing that concurrent PutUntracked don't throw");
         final WriteOptions writeOptions1 = new WriteOptions();
         final WriteOptions writeOptions2 = new WriteOptions();
@@ -123,7 +137,8 @@ public class TestSnapshotIsolation {
         System.out.println("==> SUCCESS");
     }
 
-    private static void testConcurrentPutUntrackedDeleteTrackedThrows(OptimisticTransactionDB db) throws RocksDBException {
+    @Test
+    public void testConcurrentPutUntrackedDeleteTrackedThrows() throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
         final ReadOptions readOptions = new ReadOptions();
         final WriteOptions writeOptions = new WriteOptions();
@@ -170,7 +185,8 @@ public class TestSnapshotIsolation {
 
     // just testing:
 
-    private static void testConcurrentGetForUpdate(OptimisticTransactionDB db) throws RocksDBException {
+    @Test
+    public void testConcurrentGetForUpdate() throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
         final ReadOptions readOptions = new ReadOptions();
         final WriteOptions writeOptions1 = new WriteOptions();
@@ -207,7 +223,8 @@ public class TestSnapshotIsolation {
         System.out.println("SUCCESS");
     }
 
-    private static void testConcurrentGetForUpdateAndDeleteTrackedThrows(OptimisticTransactionDB db) throws RocksDBException {
+    @Test
+    public void testConcurrentGetForUpdateAndDeleteTrackedThrows() throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
         final ReadOptions readOptions = new ReadOptions();
         final WriteOptions writeOptions1 = new WriteOptions();
@@ -253,22 +270,4 @@ public class TestSnapshotIsolation {
         System.out.println("SUCCESS");
     }
 
-    public static void main(String[] args) {
-        String tempDir = System.getProperty("java.io.tmpdir");
-
-        String dbPath = tempDir + "rocks_duplicate_key_2";
-
-        System.out.println("DB path is: " + dbPath);
-
-        try (final Options options = new Options()) {
-            options.setCreateIfMissing(true);
-
-            try (final OptimisticTransactionDB db = OptimisticTransactionDB.open(options, dbPath)) {
-                doTest(db);
-            } catch (RocksDBException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-        }
-    }
 }

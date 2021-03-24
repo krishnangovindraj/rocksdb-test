@@ -6,3 +6,14 @@ jmh_java_benchmarks(
         "ByteBufferBenchmarks.java"
     ],
 )
+
+jmh_java_benchmarks(
+    name = "rocks-operations",
+    srcs = [
+        "RocksOperations.java",
+    ],
+    deps = [
+        "//transaction:transaction",
+        "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni"
+    ]
+)

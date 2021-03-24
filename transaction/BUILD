@@ -18,5 +18,6 @@ java_test(
     test_class = "rocksdbtest.transaction.TransactionTest",
     deps = [
         ":transaction",
+        "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni"
     ],
 )
