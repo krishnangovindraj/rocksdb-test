@@ -35,8 +35,16 @@ public class RocksTransaction implements AutoCloseable {
         transaction.put(key, value);
     }
 
+    public void putUntracked(byte[] key, byte[] value) throws RocksDBException {
+        transaction.putUntracked(key, value);
+    }
+
     public void merge(byte[] key, byte[] value) throws RocksDBException {
         transaction.merge(key, value);
+    }
+
+    public void mergeUntracked(byte[] key, byte[] value) throws RocksDBException {
+        transaction.mergeUntracked(key, value);
     }
 
     public byte[] get(byte[] key) throws RocksDBException {

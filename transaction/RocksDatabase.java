@@ -1,13 +1,6 @@
 package rocksdbtest.transaction;
 
-import org.rocksdb.Checkpoint;
-import org.rocksdb.OptimisticTransactionDB;
-import org.rocksdb.OptimisticTransactionOptions;
-import org.rocksdb.Options;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.Snapshot;
-import org.rocksdb.Transaction;
-import org.rocksdb.WriteOptions;
+import org.rocksdb.*;
 
 public class RocksDatabase implements AutoCloseable {
 
@@ -16,6 +9,7 @@ public class RocksDatabase implements AutoCloseable {
 
     public RocksDatabase(String dbPath) throws RocksDBException {
         options = new Options().setCreateIfMissing(true);
+//        options.setMergeOperator(new UInt64AddOperator());
         db = OptimisticTransactionDB.open(options, dbPath);
     }
 

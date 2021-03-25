@@ -6,13 +6,16 @@ import rocksdbtest.transaction.RocksDatabase;
 import rocksdbtest.transaction.RocksTransaction;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
-import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 
 import static java.util.Collections.reverseOrder;
@@ -30,7 +33,10 @@ public class RocksOperations {
 
         public RocksDatabase db;
         public Random random;
-        public Integer[] keys;
+        public Integer[] noiseKeys;
+        public Integer[] mergeKeys;
+        public Integer[] putKeys;
+        public ExecutorService threadPool;
 
         public BenchmarkState() {
             try {
@@ -40,7 +46,10 @@ public class RocksOperations {
                 }
                 db = new RocksDatabase(dbPath);
                 random = new Random();
-                keys = random.ints(1000).boxed().toArray(Integer[]::new);
+                noiseKeys = random.ints(10_000_000).boxed().toArray(Integer[]::new);
+                putKeys = random.ints(10_000_000).boxed().toArray(Integer[]::new);
+                mergeKeys = random.ints(1).boxed().toArray(Integer[]::new);
+                threadPool = Executors.newFixedThreadPool(10);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -51,44 +60,61 @@ public class RocksOperations {
     @BenchmarkMode(Mode.Throughput)
     @Benchmark
     public void putPerformance(BenchmarkState state) {
-        long conflicts = evaluate(state, (tx, key) -> {
+        evaluate(state, state.putKeys, (tx, key) -> {
             try {
-                tx.put(toBytes(key), toBytes(key));
+                tx.putUntracked(toBytes(key), toBytes(1));
             } catch (RocksDBException e) {
                 e.printStackTrace();
             }
         });
-//        System.out.println("Conflicts written using PUT: " + conflicts);
+        System.out.println("[low-collision] PUT benchmark is done, sampling from " + state.putKeys.length + " possible keys to put.");
     }
 
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.Throughput)
     @Benchmark
     public void mergePerformance(BenchmarkState state) {
-        long conflicts = evaluate(state, (tx, key) -> {
+       evaluate(state, state.mergeKeys, (tx, key) -> {
             try {
-                tx.merge(toBytes(key), toBytes(key));
+                tx.mergeUntracked(toBytes(key), toBytes(1));
             } catch (RocksDBException e) {
                 e.printStackTrace();
             }
         });
-//        System.out.println("Conflicts written using MERGE: " + conflicts);
+        System.out.println("[high-collision] MERGE benchmark is done, sampling from : " + state.mergeKeys.length+ " possible keys to merge.");
     }
 
-    private static long evaluate(BenchmarkState state, BiConsumer<RocksTransaction, Integer> operator) {
-        Set<Integer> inserted = new HashSet<>();
-        long conflicts = 0;
-        for (int i = 0; i < 100; i++) {
-            try (RocksTransaction tx = new RocksTransaction(state.db)) {
-                for (int j = 0; j < 100; j++) {
-                    int key = state.random.nextInt(state.keys.length);
+    private static void evaluate(BenchmarkState state, Integer[] possibleKeys, BiConsumer<RocksTransaction, Integer> operator) {
+        List<Future<?>> jobs = new ArrayList<>();
+        for (int j = 0; j < 10_000; j++) {
+            jobs.add(state.threadPool.submit(() -> {
+                RocksTransaction tx = new RocksTransaction(state.db);
+                for (int i = 0; i < 100; i++) {
+                    int index = state.random.nextInt(possibleKeys.length);
+                    int key = possibleKeys[index];
+                    try {
+                        // add noise key per key we care about
+                        tx.putUntracked(toBytes(state.noiseKeys[state.random.nextInt(state.noiseKeys.length)]), toBytes(1));
+                    } catch (RocksDBException e) {
+                        e.printStackTrace();
+                    }
                     operator.accept(tx, key);
-                    if (inserted.contains(key)) conflicts++;
-                    else inserted.add(key);
                 }
-            }
+
+                try {
+                    tx.commit();
+                } catch (RocksDBException e) {
+                    e.printStackTrace();
+                }
+            }));
         }
-        return conflicts;
+        jobs.forEach(job -> {
+            try {
+                job.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 }
