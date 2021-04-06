@@ -44,7 +44,7 @@ public class RocksOperations {
                 if (Files.exists(Paths.get(dbPath))) {
                     Files.walk(Paths.get(dbPath)).sorted(reverseOrder()).map(Path::toFile).forEach(File::delete);
                 }
-                db = new RocksDatabase(dbPath);
+                db = new RocksDatabase(dbPath, true);
                 random = new Random();
                 noiseKeys = random.ints(10_000_000).boxed().toArray(Integer[]::new);
                 putKeys = random.ints(10_000_000).boxed().toArray(Integer[]::new);

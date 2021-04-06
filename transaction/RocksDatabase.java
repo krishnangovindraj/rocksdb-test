@@ -8,8 +8,12 @@ public class RocksDatabase implements AutoCloseable {
     private final OptimisticTransactionDB db;
 
     public RocksDatabase(String dbPath) throws RocksDBException {
+        this(dbPath, false);
+    }
+
+    public RocksDatabase(String dbPath, boolean mergeOperator) throws RocksDBException {
         options = new Options().setCreateIfMissing(true);
-//        options.setMergeOperator(new UInt64AddOperator());
+        if (mergeOperator) options.setMergeOperator(new UInt64AddOperator());
         db = OptimisticTransactionDB.open(options, dbPath);
     }
 

@@ -173,7 +173,6 @@ public class TestSnapshotIsolation {
         tx5.delete(key);
         tx5.commit();
         try {
-
             tx4.commit();
         } catch (Exception e) {
             System.out.println("FAIL -- not expected to throw");
@@ -183,11 +182,9 @@ public class TestSnapshotIsolation {
 
     }
 
-    // just testing:
-
     @Test
     public void testConcurrentGetForUpdate() throws RocksDBException {
-        System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
+        System.out.println("\n#### Testing interaction between concurrent getForUpdate calls");
         final ReadOptions readOptions = new ReadOptions();
         final WriteOptions writeOptions1 = new WriteOptions();
         final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
@@ -223,6 +220,38 @@ public class TestSnapshotIsolation {
         System.out.println("SUCCESS");
     }
 
+
+    @Test
+    public void testConcurrentGetForUpdateAndPutUntrackedThrows() throws RocksDBException {
+        System.out.println("\n#### Testing that putUntracked does not clash with concurrent getForUpdate");
+        final ReadOptions readOptions = new ReadOptions();
+        final WriteOptions writeOptions1 = new WriteOptions();
+        final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
+
+        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
+
+        System.out.println(tx1 + ", snapshot version: " + tx1.getSnapshot().getSequenceNumber());
+
+        tx1.put(key, value);
+        tx1.commit();
+
+        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx3 = db.beginTransaction(writeOptions1, txOptions);
+
+        tx2.getForUpdate(readOptions, key, false);
+        tx3.putUntracked(key, value);
+        tx2.commit();
+        tx3.commit();
+
+        Transaction tx4 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx5 = db.beginTransaction(writeOptions1, txOptions);
+
+        tx4.getForUpdate(readOptions, key, false);
+        tx5.putUntracked(key, value);
+        tx5.commit();
+        tx4.commit();
+    }
+
     @Test
     public void testConcurrentGetForUpdateAndDeleteTrackedThrows() throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
@@ -253,11 +282,11 @@ public class TestSnapshotIsolation {
         Transaction tx4 = db.beginTransaction(writeOptions1, txOptions);
         Transaction tx5 = db.beginTransaction(writeOptions1, txOptions);
 
-        tx4.delete(key);
-        tx5.getForUpdate(readOptions, key, false);
-        tx4.commit();
+        tx4.getForUpdate(readOptions, key, false);
+        tx5.delete(key);
+        tx5.commit();
         try {
-            tx5.commit();
+            tx4.commit();
         } catch (Exception ignored) {
             System.out.println("===> it turns out doing a getForUpdate after delete also THROWS");
         }
