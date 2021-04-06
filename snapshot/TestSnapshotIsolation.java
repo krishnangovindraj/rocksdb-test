@@ -16,6 +16,7 @@ import java.util.Arrays;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 public class TestSnapshotIsolation {
 
@@ -40,6 +41,26 @@ public class TestSnapshotIsolation {
     public static void tearDown() {
         options.close();
         db.close();
+    }
+
+    @Test
+    public void testConcurrentGetAndGetExclusive() throws RocksDBException {
+        final ReadOptions readOptions = new ReadOptions();
+        final WriteOptions writeOptions1 = new WriteOptions();
+        final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
+
+        Transaction tx0 = db.beginTransaction(writeOptions1, txOptions);
+        tx0.put(key, value);
+        tx0.commit();
+
+        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
+
+        boolean existsTx1 = tx1.get(readOptions, key) != null;
+        boolean existsTx2 = tx2.getForUpdate(readOptions, key, true) != null;
+        if (existsTx2) tx2.delete(key);
+        tx1.commit();
+        tx2.commit();
     }
 
     @Test
@@ -220,6 +241,24 @@ public class TestSnapshotIsolation {
         System.out.println("SUCCESS");
     }
 
+    @Test
+    public void testConcurrentPutsProtectedByGetUntracked() throws RocksDBException {
+        System.out.println("\n#### Testing that getForUpdate -> null followed by putUntracked does not clash with concurrent getForUpdate -> null and putUntracked");
+        final ReadOptions readOptions = new ReadOptions();
+        final WriteOptions writeOptions1 = new WriteOptions();
+        final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
+
+        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
+
+        boolean existsTx1 = tx1.getForUpdate(readOptions, key, false) != null;
+        boolean existsTx2 = tx2.getForUpdate(readOptions, key, false) != null;
+        if (!existsTx1) tx1.putUntracked(key, value);
+        if (!existsTx2) tx2.putUntracked(key, value);
+        tx1.commit();
+        tx2.commit();
+    }
+
 
     @Test
     public void testConcurrentGetForUpdateAndPutUntrackedThrows() throws RocksDBException {
@@ -253,45 +292,43 @@ public class TestSnapshotIsolation {
     }
 
     @Test
-    public void testConcurrentGetForUpdateAndDeleteTrackedThrows() throws RocksDBException {
+    public void testConcurrentGetForUpdateAndDeleteThrows() throws RocksDBException {
         System.out.println("\n#### Testing that putUntracked clashing with delete, prexisting key, throws");
         final ReadOptions readOptions = new ReadOptions();
-        final WriteOptions writeOptions1 = new WriteOptions();
+        final WriteOptions writeOptions = new WriteOptions();
         final OptimisticTransactionOptions txOptions = new OptimisticTransactionOptions().setSetSnapshot(true);
-
-        Transaction tx1 = db.beginTransaction(writeOptions1, txOptions);
-
-        System.out.println(tx1 + ", snapshot version: " + tx1.getSnapshot().getSequenceNumber());
+        Transaction tx1 = db.beginTransaction(writeOptions, txOptions);
 
         tx1.put(key, value);
         tx1.commit();
 
-        Transaction tx2 = db.beginTransaction(writeOptions1, txOptions);
-        Transaction tx3 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx2 = db.beginTransaction(writeOptions, txOptions);
+        Transaction tx3 = db.beginTransaction(writeOptions, txOptions);
 
         tx2.getForUpdate(readOptions, key, false);
         tx3.delete(key);
         tx2.commit();
         try {
             tx3.commit();
+            fail(); // this would throw if we could make a write conflict with an earlier reserved read
         } catch (Exception e) {
             System.out.println("==> delete that is preceded by getForUpdate THROWS, SUCCESS");
-            return;
         }
 
-        Transaction tx4 = db.beginTransaction(writeOptions1, txOptions);
-        Transaction tx5 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx4 = db.beginTransaction(writeOptions, txOptions);
+        Transaction tx5 = db.beginTransaction(writeOptions, txOptions);
 
         tx4.getForUpdate(readOptions, key, false);
         tx5.delete(key);
         tx5.commit();
         try {
             tx4.commit();
+            fail(); // this should also throw
         } catch (Exception ignored) {
             System.out.println("===> it turns out doing a getForUpdate after delete also THROWS");
         }
 
-        Transaction tx6 = db.beginTransaction(writeOptions1, txOptions);
+        Transaction tx6 = db.beginTransaction(writeOptions, txOptions);
         assertArrayEquals(null, tx6.get(readOptions, key));
 
         System.out.println("==> and we can see that the key is deleted");
