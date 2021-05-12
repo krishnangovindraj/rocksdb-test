@@ -3,7 +3,9 @@ package rocksdbtest.transaction;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +17,7 @@ import java.util.Arrays;
 import static java.util.Comparator.reverseOrder;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static rocksdbtest.transaction.RocksTransaction.getInt;
 import static rocksdbtest.transaction.RocksTransaction.getInts;
@@ -77,6 +80,28 @@ public class TransactionTest {
                 tx.commit();
 
                 assertEquals(-1, getInt(tx, 2));
+            }
+        }
+    }
+
+    @Test
+    public void iterators_see_uncommitted_writes() throws RocksDBException {
+        try (RocksDatabase db = new RocksDatabase(dbPath)) {
+            try (RocksTransaction tx = new RocksTransaction(db)) {
+                tx.put(toBytes(1), toBytes(2));
+                tx.put(toBytes(2), toBytes(3));
+                RocksIterator iter = tx.iterate(toBytes(1));
+                assertEquals(1, toInt(iter.key()));
+                iter.next();
+                assertEquals(2, toInt(iter.key()));
+
+                tx.delete(toBytes(2));
+                iter.seek(toBytes(1));
+                assertTrue(iter.isValid());
+                assertEquals(1, toInt(iter.key()));
+
+                iter.next();
+                assertFalse(iter.isValid());
             }
         }
     }

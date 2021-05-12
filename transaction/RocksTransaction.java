@@ -3,6 +3,7 @@ package rocksdbtest.transaction;
 import org.rocksdb.OptimisticTransactionOptions;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 import org.rocksdb.Transaction;
 import org.rocksdb.WriteOptions;
 
@@ -53,6 +54,12 @@ public class RocksTransaction implements AutoCloseable {
 
     public byte[] getForUpdate(byte[] key, boolean exclusive) throws RocksDBException {
         return transaction.getForUpdate(readOptions, key, exclusive);
+    }
+
+    public RocksIterator iterate(byte[] key) throws RocksDBException {
+        RocksIterator iterator = transaction.getIterator(readOptions);
+        iterator.seek(key);
+        return iterator;
     }
 
     public void delete(byte[] key) throws RocksDBException {
