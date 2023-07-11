@@ -25,12 +25,12 @@ public class RocksOperations {
 
     static String dbPath;
     final static byte[] value = new byte[0];
-
+    private final static int QUERIES = 200;
+    private final static int BATCH = 50;
     static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
 
     @State(Scope.Thread)
     public static class BenchmarkState {
-
         public RocksDatabase db;
         public Random random;
         public Integer[] noiseKeys;
@@ -64,7 +64,7 @@ public class RocksOperations {
             try {
                 tx.putUntracked(toBytes(key), toBytes(1));
             } catch (RocksDBException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         });
         System.out.println("[low-collision] PUT benchmark is done, sampling from " + state.putKeys.length + " possible keys to put.");

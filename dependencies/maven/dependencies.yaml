@@ -22,9 +22,9 @@ dependencies:
       version: "23.0"
       lang: java
 
-  org.rocksdb:
-    rocksdbjni:
-      version: "6.6.4"
+  io.github.speedb-io:
+    speedbjni:
+      version: "2.4.1.5"
       lang: java
 
   org.openjdk.jmh:

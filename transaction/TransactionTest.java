@@ -3,6 +3,7 @@ package rocksdbtest.transaction;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -12,7 +13,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 
 import static java.util.Comparator.reverseOrder;
 import static org.junit.Assert.assertArrayEquals;
@@ -25,7 +31,8 @@ import static rocksdbtest.transaction.RocksTransaction.toBytes;
 import static rocksdbtest.transaction.RocksTransaction.toInt;
 
 public class TransactionTest {
-
+    final int QUERIES = 20000;
+    final int BATCH = 50;
     static String dbPath;
 
     static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
@@ -533,7 +540,82 @@ public class TransactionTest {
             }
         }
     }
+    public void insert_queries()
+    {
+        final long startTime = System.currentTimeMillis();
+        try (RocksDatabase db = new RocksDatabase(dbPath)) {
+            for (int j = 0; j < QUERIES; j+=BATCH) {
+                for (int i = j; i < j+BATCH; i++) {
+                    int key = (1<<20)+i;
+                    RocksTransaction tx = new RocksTransaction(db);
+                    try {
+                        tx.put(toBytes(key), toBytes(1));
+                        tx.commit();
+                    } catch (RocksDBException e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+                System.out.println("inserted key "+j);
+            }
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
+        final long endTime = System.currentTimeMillis();
+        System.out.println("Total insertion time: " + (endTime - startTime)/1000.0 + "s");
+    }
 
+    public void delete_queries()
+    {
+        final long startTime = System.currentTimeMillis();
+        try (RocksDatabase db = new RocksDatabase(dbPath)) {
+            for (int j = 1; j < QUERIES; j+=BATCH) {
+                for (int i = j; i < j+BATCH; i++) {
+                    int key = (1<<20)+i;
+                    RocksTransaction tx = new RocksTransaction(db);
+                    try {
+                        tx.delete(toBytes(key));
+                        tx.commit();
+                    } catch (RocksDBException e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+                System.out.println("deleted key "+j);
+            }
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
+        final long endTime = System.currentTimeMillis();
+        System.out.println("Total deletion time: " + (endTime - startTime)/1000.0+ "s");
+    }
+
+    public void seek_queries() throws RocksDBException {
+        final long startTime = System.currentTimeMillis();
+        try (RocksDatabase db = new RocksDatabase(dbPath)) {
+            for (int j = 0; j < QUERIES; j+=BATCH) {
+                for (int i = j; i < j+BATCH; i++) {
+                    int key = (1<<20)+i;
+                    RocksTransaction tx = new RocksTransaction(db);
+                    try {
+                        tx.iterate(toBytes(key));
+                    } catch (RocksDBException e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+                System.out.println("seeked key "+j);
+            }
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
+        final long endTime = System.currentTimeMillis();
+        System.out.println("Total seek time: " + (endTime - startTime)/1000.0+ "s");
+    }
+    @Test
+    public void slow_typedb_deletes() throws RocksDBException {
+
+        //insert_queries();
+        //delete_queries();
+        seek_queries();
+    }
     /* Behaviour of an exclusive lock is documented in TestSnapshotIsolation */
 
     private static void assertArrayEqualsVerbose(int[] expected, int[] actual) {
