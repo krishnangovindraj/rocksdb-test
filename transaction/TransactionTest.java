@@ -32,7 +32,6 @@ import static rocksdbtest.transaction.RocksTransaction.toInt;
 
 public class TransactionTest {
     final int QUERIES = 20000;
-    final int BATCH = 50;
     static String dbPath;
 
     static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
@@ -544,9 +543,8 @@ public class TransactionTest {
     {
         final long startTime = System.currentTimeMillis();
         try (RocksDatabase db = new RocksDatabase(dbPath)) {
-            for (int j = 0; j < QUERIES; j+=BATCH) {
-                for (int i = j; i < j+BATCH; i++) {
-                    int key = (1<<20)+i;
+            for (int j = 0; j < QUERIES; j++) {
+                    int key = (1<<20)+j;
                     RocksTransaction tx = new RocksTransaction(db);
                     try {
                         tx.put(toBytes(key), toBytes(1));
@@ -554,8 +552,6 @@ public class TransactionTest {
                     } catch (RocksDBException e) {
                         throw new RuntimeException(e);
                     }
-                };
-                System.out.println("inserted key "+j);
             }
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
@@ -568,18 +564,15 @@ public class TransactionTest {
     {
         final long startTime = System.currentTimeMillis();
         try (RocksDatabase db = new RocksDatabase(dbPath)) {
-            for (int j = 1; j < QUERIES; j+=BATCH) {
-                for (int i = j; i < j+BATCH; i++) {
-                    int key = (1<<20)+i;
-                    RocksTransaction tx = new RocksTransaction(db);
-                    try {
-                        tx.delete(toBytes(key));
-                        tx.commit();
-                    } catch (RocksDBException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                System.out.println("deleted key "+j);
+            for (int j = 1; j < QUERIES; j++) {
+                int key = (1<<20)+j;
+                RocksTransaction tx = new RocksTransaction(db);
+                try {
+                    tx.delete(toBytes(key));
+                    tx.commit();
+                } catch (RocksDBException e) {
+                    throw new RuntimeException(e);
+                }
             }
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
@@ -591,17 +584,15 @@ public class TransactionTest {
     public void seek_queries() throws RocksDBException {
         final long startTime = System.currentTimeMillis();
         try (RocksDatabase db = new RocksDatabase(dbPath)) {
-            for (int j = 0; j < QUERIES; j+=BATCH) {
-                for (int i = j; i < j+BATCH; i++) {
-                    int key = (1<<20)+i;
-                    RocksTransaction tx = new RocksTransaction(db);
-                    try {
-                        tx.iterate(toBytes(key));
-                    } catch (RocksDBException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                System.out.println("seeked key "+j);
+            for (int j = 0; j < QUERIES; j++) {
+                int key = (1<<20)+j;
+                RocksTransaction tx = new RocksTransaction(db);
+                try {
+                    tx.iterate(toBytes(key));
+                } catch (RocksDBException e) {
+                    throw new RuntimeException(e);
+                }
+                tx.close();
             }
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
@@ -611,9 +602,9 @@ public class TransactionTest {
     }
     @Test
     public void slow_typedb_deletes() throws RocksDBException {
-
-        //insert_queries();
-        //delete_queries();
+        insert_queries();
+        seek_queries();
+        delete_queries();
         seek_queries();
     }
     /* Behaviour of an exclusive lock is documented in TestSnapshotIsolation */
