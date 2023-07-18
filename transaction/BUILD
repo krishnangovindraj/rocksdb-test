@@ -1,3 +1,4 @@
+exports_files(["speedbjni-2.5.0-linux64.jar"])
 java_library(
     name = "transaction",
     srcs = [
@@ -5,7 +6,7 @@ java_library(
         "RocksTransaction.java",
     ],
     deps = [
-        "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni"
+        ":speedbjni-2.5.0-linux64.jar",
     ],
     visibility = ["//visibility:public"],
 )
@@ -18,6 +19,6 @@ java_test(
     test_class = "rocksdbtest.transaction.TransactionTest",
     deps = [
         ":transaction",
-        "//dependencies/maven/artifacts/org/rocksdb:rocksdbjni"
+        ":speedbjni-2.5.0-linux64.jar",
     ],
 )
